@@ -3,7 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
 const client = require('./discordClient');
-const { PermissionsBitField, ChannelType, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { PermissionsBitField, ChannelType } = require('discord.js');
 const app = express();
 const PORT = 3000;
 
@@ -22,9 +22,8 @@ const raidSchema = new mongoose.Schema({
     difficulty: String,
     type: String,
     participants: [{
-        userId: String,
-        klasse: String,
-        rolle: String,
+        name: String,
+        role: String,
         status: String
     }]
 });
@@ -33,6 +32,23 @@ const Raid = mongoose.model('Raid', raidSchema);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
+
+client.once('ready', async () => {
+    console.log(`Discord bot logged in as ${client.user.tag}`);
+
+    const guilds = client.guilds.cache.map(guild => ({ id: guild.id, name: guild.name }));
+    console.log('Available guilds:', guilds);
+
+    const guild = client.guilds.cache.get(process.env.GUILD_ID);
+    if (!guild) {
+        console.error('Guild not found. GUILD_ID:', process.env.GUILD_ID);
+    } else {
+        console.log(`Guild found: ${guild.name}`);
+    }
+});
+
+client.login(process.env.DISCORD_BOT_TOKEN)
+    .catch(err => console.error('Error logging in Discord bot:', err));
 
 app.post('/api/create-raid', async (req, res) => {
     const { date, time, raidLeader, location, difficulty, type } = req.body;
@@ -68,63 +84,29 @@ app.post('/api/create-raid', async (req, res) => {
             ],
         });
 
-        const embed = new EmbedBuilder()
-            .setColor(0x0099ff)
-            .setTitle(`📅 New Raid Created: ${location}`)
-            .setDescription(`**Date:** ${date}\n**Time:** ${time}\n**Raid Leader:** <@${raidLeader}>\n**Location:** ${location}\n**Difficulty:** ${difficulty}\n**Type:** ${type}`)
-            .addFields(
-                { name: '📋 Summary', value: `**Date:** ${date}\n**Time:** ${time}\n**Raid Leader:** <@${raidLeader}>\n**Location:** ${location}\n**Difficulty:** ${difficulty}\n**Type:** ${type}`, inline: false },
-                { name: '📊 Participants', value: 'No participants yet.', inline: false }
-            )
-            .setTimestamp()
-            .setFooter({ text: 'Use the selections below to sign up!' });
+        const embed = {
+            color: 0x0099ff,
+            title: `📅 New Raid Created: ${location}`,
+            description: `**Date:** ${date}\n**Time:** ${time}\n**Raid Leader:** <@${raidLeader}>\n**Location:** ${location}\n**Difficulty:** ${difficulty}\n**Type:** ${type}`,
+            fields: [
+                {
+                    name: '📋 Summary',
+                    value: `**Date:** ${date}\n**Time:** ${time}\n**Raid Leader:** <@${raidLeader}>\n**Location:** ${location}\n**Difficulty:** ${difficulty}\n**Type:** ${type}`,
+                    inline: false
+                },
+                {
+                    name: '📊 Participants',
+                    value: 'No participants yet.',
+                    inline: false
+                }
+            ],
+            timestamp: new Date(),
+            footer: {
+                text: 'Use the reactions below to sign up!',
+            },
+        };
 
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new StringSelectMenuBuilder()
-                    .setCustomId(`class_${savedRaid._id}`)
-                    .setPlaceholder('Select your class')
-                    .addOptions([
-                        { label: 'Warrior', value: 'Warrior' },
-                        { label: 'Mage', value: 'Mage' },
-                        { label: 'Druid', value: 'Druid' },
-                        // add more options as needed
-                    ]),
-                new StringSelectMenuBuilder()
-                    .setCustomId(`role_${savedRaid._id}`)
-                    .setPlaceholder('Select your role')
-                    .addOptions([
-                        { label: 'Tank', value: 'Tank' },
-                        { label: 'Healer', value: 'Healer' },
-                        { label: 'DPS', value: 'DPS' },
-                        // add more options as needed
-                    ]),
-                new StringSelectMenuBuilder()
-                    .setCustomId(`status_${savedRaid._id}`)
-                    .setPlaceholder('Select your status')
-                    .addOptions([
-                        { label: 'Saved', value: 'saved' },
-                        { label: 'Unsaved', value: 'unsaved' }
-                    ])
-            );
-
-        const buttonRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`sign_in_${savedRaid._id}`)
-                    .setLabel('Sign In')
-                    .setStyle(ButtonStyle.Success),
-                new ButtonBuilder()
-                    .setCustomId(`alts_${savedRaid._id}`)
-                    .setLabel('Alts')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId(`sign_out_${savedRaid._id}`)
-                    .setLabel('Sign Out')
-                    .setStyle(ButtonStyle.Danger)
-            );
-
-        await channel.send({ embeds: [embed], components: [row, buttonRow] });
+        await channel.send({ embeds: [embed] });
 
         res.status(201).send(savedRaid);
     } catch (err) {
@@ -217,12 +199,16 @@ app.get('/api/raid-leaders', async (req, res) => {
 
         console.log(`Role found: ${role.name}`);
 
+        // Fetch all members of the guild
+        const members = await guild.members.fetch();
+        console.log('All guild members:', members.map(member => member.user.username));
+
         const membersWithRole = role.members.map(member => ({
             id: member.user.id,
             username: member.user.username
         }));
 
-        console.log('Members with role:', membersWithRole);
+        console.log('Members with role:', membersWithRole);  // Debugging-Ausgabe
 
         res.send(membersWithRole);
     } catch (err) {
@@ -241,15 +227,17 @@ app.get('*', (req, res) => {
 
 app.put('/api/raids/:id/signup', async (req, res) => {
     try {
-        const { userId, klasse, rolle, status } = req.body;
+        const { userId, klasse, rolle, status } = req.body;  // Benutzer-ID, Klasse, Rolle und Status des Teilnehmers
         const raid = await Raid.findById(req.params.id);
         if (!raid) return res.status(404).send('Raid not found');
 
+        // Überprüfe, ob der Benutzer bereits angemeldet ist
         const participantExists = raid.participants.some(p => p.userId === userId);
         if (participantExists) {
             return res.status(400).send('User already signed up');
         }
 
+        // Füge den Teilnehmer hinzu
         raid.participants.push({ userId, klasse, rolle, status });
         await raid.save();
 
@@ -259,48 +247,6 @@ app.put('/api/raids/:id/signup', async (req, res) => {
     }
 });
 
-client.on('interactionCreate', async interaction => {
-    try {
-        if (!interaction.isSelectMenu() && !interaction.isButton()) return;
-
-        const [action, raidId] = interaction.customId.split('_');
-        console.log(`Interaction received: ${interaction.customId}`);
-        console.log(`Action: ${action}, Raid ID: ${raidId}`);
-
-        const raid = await Raid.findById(raidId);
-        if (!raid) {
-            return interaction.reply({ content: 'Invalid Raid ID', ephemeral: true });
-        }
-
-        if (interaction.isSelectMenu()) {
-            if (action === 'class') {
-                const selectedClass = interaction.values[0];
-                interaction.reply({ content: `Class selected: ${selectedClass}`, ephemeral: true });
-            } else if (action === 'role') {
-                const selectedRole = interaction.values[0];
-                interaction.reply({ content: `Role selected: ${selectedRole}`, ephemeral: true });
-            } else if (action === 'status') {
-                const selectedStatus = interaction.values[0];
-                interaction.reply({ content: `Status selected: ${selectedStatus}`, ephemeral: true });
-            }
-        } else if (interaction.isButton()) {
-            if (action === 'sign_in') {
-                interaction.reply({ content: 'You have signed in!', ephemeral: true });
-            } else if (action === 'alts') {
-                interaction.reply({ content: 'Alt characters registered.', ephemeral: true });
-            } else if (action === 'sign_out') {
-                interaction.reply({ content: 'You have signed out!', ephemeral: true });
-            } else {
-                interaction.reply({ content: 'Unknown action', ephemeral: true });
-            }
-        }
-    } catch (err) {
-        console.error('Error processing interaction:', err);
-        interaction.reply({ content: 'There was an error processing your selection.', ephemeral: true });
-    }
-});
-
-client.login(process.env.DISCORD_BOT_TOKEN);
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

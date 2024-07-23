@@ -3,39 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Raid Helper</title>
+    <title>Vanguards Raid Helper</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Raid Helper</h1>
-    <form id="create-raid-form">
+    <h1>Create a Raid</h1>
+    <form id="createRaidForm">
         <label for="date">Date:</label>
         <input type="date" id="date" name="date" required>
+        
         <label for="time">Time:</label>
         <input type="time" id="time" name="time" required>
-        <label for="raid-leader">Raid Leader:</label>
-        <select id="raid-leader" name="raidLeader" required></select>
+        
+        <label for="raidLeader">Raid Leader:</label>
+        <select id="raidLeader" name="raidLeader" required>
+            <option value="" disabled selected>Select Raid Leader</option>
+        </select>
+        
         <label for="location">Location:</label>
         <select id="location" name="location" required>
             <option value="Vault">Vault</option>
             <option value="Aberus">Aberus</option>
             <option value="Admidrassil">Admidrassil</option>
         </select>
+        
         <label for="difficulty">Difficulty:</label>
         <select id="difficulty" name="difficulty" required>
             <option value="Normal">Normal</option>
             <option value="Heroic">Heroic</option>
             <option value="Mythic">Mythic</option>
         </select>
+        
         <label for="type">Type:</label>
         <select id="type" name="type" required>
             <option value="VIP">VIP</option>
             <option value="Unsaved">Unsaved</option>
             <option value="Saved">Saved</option>
         </select>
+        
         <button type="submit">Create Raid</button>
     </form>
-    <div id="raids"></div>
+
+    <h2>Existing Raids</h2>
+    <div id="raidList"></div>
+
     <script src="scripts.js"></script>
 </body>
 </html>
