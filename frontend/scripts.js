@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <p><strong>Difficulty:</strong> ${raid.difficulty}</p>
                 <p><strong>Type:</strong> ${raid.type}</p>
                 <p><strong>Participants:</strong> ${raid.participants.length}</p>
-                <a href="/raid/${raid._id}" class="button">Show Details</a>
+                <a href="/raid/${raid._id}">Show Details</a>
             `;
 
             raidList.appendChild(raidElement);
