@@ -14,6 +14,14 @@ h1 {
     margin: 20px 0;
 }
 
+#createRaidForm {
+    width: 70%;
+}
+
+#raidList{
+    width: 70%;
+}
+
 form {
     background-color: #0b0c10;
     padding: 20px;

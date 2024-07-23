@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raid Details</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="raid-details">
+            <h2>Raid Details</h2>
+            <p><strong>Date:</strong> <span id="raid-date"></span></p>
+            <p><strong>Time:</strong> <span id="raid-time"></span></p>
+            <p><strong>Raid Leader:</strong> <span id="raid-leader"></span></p>
+            <p><strong>Location:</strong> <span id="raid-location"></span></p>
+            <p><strong>Difficulty:</strong> <span id="raid-difficulty"></span></p>
+            <p><strong>Type:</strong> <span id="raid-type"></span></p>
+            <h3>Participants</h3>
+            <ul id="raid-participants"></ul>
+        </div>
+    </div>
+
+    <script>
+        const raidId = window.location.pathname.split('/').pop();
+
+        fetch(`/api/raids/${raidId}`)
+            .then(response => response.json())
+            .then(raid => {
+                document.getElementById('raid-date').textContent = raid.date;
+                document.getElementById('raid-time').textContent = raid.time;
+                document.getElementById('raid-leader').textContent = raid.raidLeader;
+                document.getElementById('raid-location').textContent = raid.location;
+                document.getElementById('raid-difficulty').textContent = raid.difficulty;
+                document.getElementById('raid-type').textContent = raid.type;
+                const participantsList = document.getElementById('raid-participants');
+                raid.participants.forEach(participant => {
+                    const li = document.createElement('li');
+                    li.textContent = `${participant.name} (${participant.role}, ${participant.status})`;
+                    participantsList.appendChild(li);
+                });
+            })
+            .catch(err => console.error('Error fetching raid details:', err));
+    </script>
+</body>
+</html>
